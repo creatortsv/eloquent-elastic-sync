@@ -20,7 +20,6 @@ class EloquentElasticSyncProvider extends ServiceProvider
      */
     public function register(): void
     {
-        dd(1);
         $this->app
             ->when(ElasticObserver::class)
             ->needs(ClientInterface::class)
