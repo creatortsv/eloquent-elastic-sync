@@ -3,7 +3,7 @@
 namespace Creatortsv\EloquentElasticSync;
 
 use Illuminate\Database\Eloquent\Model;
-use GuzzleHttp\ClientInterface;
+use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Psr7\Request as AsyncRequest;
 
@@ -20,15 +20,22 @@ class ElasticObserver
     /**
      * Constructor
      */
-    public function __construct(ClientInterface $client)
+    public function __construct()
     {
+        $conn = config('elastic_sync.connection', 'default');
+        $host = config("elastic_sync.connections.$conn.host");
+        $port = config("elastic_sync.connections.$conn.port");
+
+        $this->client = new Client([
+            'base_uri' => 'http://' . $host . ':' . $port . '/',
+        ]);
     }
 
     /**
      * @param Model $model
      * @return void
      */
-    public function created(Model $model, ClientInterface $client): void
+    public function created(Model $model): void
     {
     }
 
