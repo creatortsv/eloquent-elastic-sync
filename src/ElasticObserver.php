@@ -22,7 +22,6 @@ class ElasticObserver
      */
     public function __construct(ClientInterface $client)
     {
-        dd($client);
     }
 
     /**
@@ -31,8 +30,6 @@ class ElasticObserver
      */
     public function created(Model $model, ClientInterface $client): void
     {
-        dump($client);
-        dd($this->client);
     }
 
     /**
