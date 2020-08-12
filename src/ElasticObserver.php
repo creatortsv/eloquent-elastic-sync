@@ -20,7 +20,7 @@ class ElasticObserver
     /**
      * Constructor
      */
-    public function __construct()
+    public function __construct(ClientInterface $client)
     {
     }
 
