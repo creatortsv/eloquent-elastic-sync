@@ -1,6 +1,7 @@
 {
     "name": "creatortsv/eloquent-elastic-sync",
     "description": "This package helps sync indexing your eloquent models into elasticsearch",
+    "minimum-stability": "dev",
     "authors": [
         {
             "name": "creatortsv",
