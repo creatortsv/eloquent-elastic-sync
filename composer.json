@@ -22,7 +22,8 @@
     },
     "autoload": {
         "psr-4": {
-            "Creatortsv\\EloquentElasticSync\\": "src"
+            "Creatortsv\\EloquentElasticSync\\": "src",
+            "Creatortsv\\EloquentElasticSync\\Test\\": "tests"
         }
     },
     "extra": {

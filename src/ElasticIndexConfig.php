@@ -54,9 +54,9 @@ class ElasticIndexConfig
      * @param string $name
      * @return self
      */
-    public function setName(string $name): self
+    public function setIndexName(string $name): self
     {
-        $this->indexName = $name;
+        $this->name = $name;
         return $this;
     }
 
