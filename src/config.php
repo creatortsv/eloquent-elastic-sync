@@ -2,16 +2,70 @@
 
 return [
 
+    /*
+         * Which connection settings will be used
+         */
     'connection' => 'default',
 
+    /*
+         * Describe different connections
+     */
     'connections' => [
 
+        /*
+         * Connection name
+         */
         'default' => [
 
             'host' => env('ELASTIC_HOST'),
             'port' => env('ELASTIC_PORT'),
 
         ],
+
+    ],
+
+    /**
+     * The field of the mapping which will be used as the id of an elastic index document
+     */
+    'index_id_field' => 'id',
+
+    /**
+     * If it is true, then attributes with mutated of an eloquent model will be used
+     */
+    'use_mutated_fields' => false,
+
+    /*
+     * Which index will be used
+     */
+    'indexes' => [
+
+        /*
+         * Describe different indexes & its fields
+         */
+        'default' => null,
+
+        /*
+         * Describe different indexes & its fields
+         * fields formart: [elastic property] => [alias]? optional
+        'some-index' => [
+
+            'base_mapping' => [
+
+                'id',
+                'name',
+
+            ],
+
+            'App\\User' => [
+
+                'id',
+                'name' => 'email',
+                'phone' => 'phones.number',
+                'avatar' => 'avatar.image.safe_url',
+
+            ],
+
+        ], */
 
     ],
 

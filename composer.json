@@ -1,6 +1,7 @@
 {
     "name": "creatortsv/eloquent-elastic-sync",
     "description": "This package helps sync indexing your eloquent models into elasticsearch",
+    "license": "MIT",
     "minimum-stability": "dev",
     "authors": [
         {
@@ -12,6 +13,7 @@
         "php": ">=7.2.0",
         "illuminate/database": ">=5.6.0",
         "illuminate/support": ">=5.6.0",
+        "illuminate/console": ">=5.6.0",
         "guzzlehttp/guzzle": ">=6.3",
         "guzzlehttp/psr7": ">=1.5"
     },
@@ -29,5 +31,8 @@
                 "Creatortsv\\EloquentElasticSync\\EloquentElasticSyncProvider"
             ]
         }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit"
     }
 }
