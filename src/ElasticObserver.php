@@ -11,8 +11,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Psr\Http\Message\ResponseInterface;
 
-use function GuzzleHttp\json_encode;
-
 /**
  * It helps sync your model to elasticsearch server
  */

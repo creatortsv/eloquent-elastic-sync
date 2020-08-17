@@ -41,6 +41,6 @@
         }
     },
     "scripts": {
-        "test": "vendor/bin/phpunit --testdox --coverage-text"
+        "test": "vendor/bin/phpunit -v --testdox --coverage-text --colors=always"
     }
 }
