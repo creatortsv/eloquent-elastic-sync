@@ -212,4 +212,19 @@ class ElasticIndexConfigTest extends TestCase
             'third_field' => 'third_value',
         ]), $this->config->execMapping($this->model));
     }
+
+    /**
+     * @covers Creatortsv\EloquentElasticSync\ElasticIndexConfig::createMap
+     * @return void
+     */
+    public function testCreateMapMethod(): void
+    {
+        $this->assertEquals([
+            'id' => 'id',
+            'name' => 'full_name',
+        ], ElasticIndexConfig::createMap([
+            'id',
+            'name' => 'full_name',
+        ]));
+    }
 }
