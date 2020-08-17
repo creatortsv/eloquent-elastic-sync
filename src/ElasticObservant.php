@@ -19,7 +19,7 @@ trait ElasticObservant
      */
     public static function bootElasticObservant(): void
     {
-        static::observe(new ElasticObserver);
+        static::observe(new ElasticObserver(self::class));
     }
 
     /**

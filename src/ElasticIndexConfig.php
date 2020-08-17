@@ -12,6 +12,11 @@ use Illuminate\Support\Facades\Config;
 class ElasticIndexConfig
 {
     /**
+     * @var string
+     */
+    protected $connection = 'default';
+
+    /**
      * Class of an eloquent model
      * @var string
      */
@@ -48,6 +53,24 @@ class ElasticIndexConfig
     public function __construct(string $class)
     {
         $this->class = $class;
+    }
+
+    /**
+     * @param string $connection
+     * @return self
+     */
+    public function setConnection(string $connection): self
+    {
+        $this->connection = $connection;
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function connection(): string
+    {
+        return $this->connection ?? Config::get('elastic_sync.connection', 'default');
     }
 
     /**
@@ -137,7 +160,7 @@ class ElasticIndexConfig
         $conf = Config::get('elastic_sync.indexes.' . $this->index(), []);
         $maps = array_merge(
             static::createMap($conf['base_mapping'] ?? []),
-            static::createMap($conf[$this->class] ?? []),
+            static::createMap($conf[get_class($model)] ?? []),
         );
 
         return $maps;

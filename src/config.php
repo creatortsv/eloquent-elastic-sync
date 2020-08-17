@@ -3,12 +3,12 @@
 return [
 
     /*
-         * Which connection settings will be used
-         */
+     * Which connection settings will be used
+     */
     'connection' => 'default',
 
     /*
-         * Describe different connections
+     * Describe different connections
      */
     'connections' => [
 
@@ -17,8 +17,8 @@ return [
          */
         'default' => [
 
-            'host' => env('ELASTIC_HOST'),
-            'port' => env('ELASTIC_PORT'),
+            'host' => env('ELASTIC_HOST', 'localhost'),
+            'port' => env('ELASTIC_PORT', 9200),
 
         ],
 

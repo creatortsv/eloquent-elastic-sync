@@ -2,6 +2,7 @@
 
 namespace Creatortsv\EloquentElasticSync;
 
+use Exception;
 use Illuminate\Database\Eloquent\Model;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
@@ -17,32 +18,32 @@ use Psr\Http\Message\ResponseInterface;
 class ElasticObserver
 {
     /**
-     * @var Client
+     * @var string
      */
-    protected $client;
+    protected $class;
 
     /**
      * Constructor
      */
-    public function __construct()
+    public function __construct(string $config)
     {
-        $conn = Config::get('elastic_sync.connection', 'default');
-        $host = Config::get("elastic_sync.connections.$conn.host");
-        $port = Config::get("elastic_sync.connections.$conn.port");
-
-        $this->client = new Client([
-            'base_uri' => 'http://' . $host . ':' . $port . '/',
-        ]);
+        $this->class = $config;
     }
 
     /**
-     * @param Model $model
-     * @param string $rest
+     * @param string $name
+     * @param array $arguments
+     * @return mixed
      */
-    protected static function uri(Model $model, string $rest): string
+    public function __call($name, $arguments)
     {
-        $config = get_class($model)::elastic();
-        return $config->index() . '/' . $rest;
+        if (method_exists($this->class::elastic(), $name)) {
+            return $this->class::elastic()->$name(...$arguments);
+        }
+
+        if (method_exists($this, $name)) {
+            return $this->$name(...$arguments);
+        }
     }
 
     /**
@@ -51,10 +52,8 @@ class ElasticObserver
      */
     public function saved(Model $model): void
     {
-        $data = self::getData($model);
-        $uri  = self::uri($model, '/_doc/' . $data[Config::get('elastic_sync.indexes.index_id_field', 'id')]);
         $this
-            ->async(Request::METHOD_PUT, $uri, $data)
+            ->async(Request::METHOD_PUT, ...$this->uri($model))
             ->then(function (ResponseInterface $response): void {
                 /** TODO: event */
             }, function (RequestException $e): void {
@@ -69,10 +68,8 @@ class ElasticObserver
      */
     public function deleted(Model $model): void
     {
-        $data = self::getData($model);
-        $uri  = self::uri($model, '/_doc/' . $data[Config::get('elastic_sync.indexes.index_id_field', 'id')]);
         $this
-            ->async(Request::METHOD_DELETE, $uri)
+            ->async(Request::METHOD_DELETE, $this->uri($model)[0])
             ->then(function (ResponseInterface $response): void {
                 /** TODO: event */
             }, function (RequestException $e): void {
@@ -95,7 +92,7 @@ class ElasticObserver
         array $headers = []
     ): PromiseInterface {
         return $this
-            ->client
+            ->client()
             ->sendAsync(new AsyncRequest($method, $uri, $headers ?: [
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
@@ -150,5 +147,40 @@ class ElasticObserver
         }
 
         return $data;
+    }
+
+    /**
+     * @param Model $model
+     * @return array
+     */
+    protected function uri(Model $model): array
+    {
+        $idProp = Config::get('elastic_sync.indexes.index_id_field', 'id');
+        $data = self::getData($model);
+        $guid = $data[$idProp] ?? null;
+
+        if (!$guid) {
+            throw new Exception('Data must contain the "' . $idProp . '" property');
+        }
+
+        return [
+            $this->index() . '/_doc/' . $guid,
+            $data,
+        ];
+    }
+
+    /**
+     * @param Model $model
+     * @return Client
+     */
+    protected function client(): Client
+    {
+        $conn = $this->connection();
+        $host = Config::get("elastic_sync.connections.$conn.host");
+        $port = Config::get("elastic_sync.connections.$conn.port");
+
+        return new Client([
+            'base_uri' => 'http://' . $host . ':' . $port . '/',
+        ]);
     }
 }

@@ -73,6 +73,26 @@ class ElasticIndexConfigTest extends TestCase
     }
 
     /**
+     * @covers Creatortsv\EloquentElasticSync\ElasticIndexConfig::connection
+     * @covers Creatortsv\EloquentElasticSync\ElasticIndexConfig::setConnection
+     * @return void
+     */
+    public function testConfigureConnectionName(): void
+    {
+        $name = 'my-connection';
+        Config::shouldReceive('get')
+            ->once()
+            ->with('elastic_sync.connection', 'default')
+            ->andReturn('default');
+
+        $this->assertNotEquals($name, $this->config->connection());
+        $this->assertEquals('default', $this->config->connection());
+
+        $this->config->setConnection($name);
+        $this->assertEquals($name, $this->config->connection());
+    }
+
+    /**
      * @covers Creatortsv\EloquentElasticSync\ElasticIndexConfig::index
      * @covers Creatortsv\EloquentElasticSync\ElasticIndexConfig::setIndexName
      * @return void
