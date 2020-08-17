@@ -41,6 +41,6 @@
         }
     },
     "scripts": {
-        "test": "vendor/bin/phpunit -v --testdox --coverage-text --colors=always"
+        "test": "vendor/bin/phpunit -v --testdox --colors=always --coverage-clover coverage.xml"
     }
 }
