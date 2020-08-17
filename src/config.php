@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Support\Env;
+
 return [
 
     /*
@@ -17,8 +19,8 @@ return [
          */
         'default' => [
 
-            'host' => env('ELASTIC_HOST', 'localhost'),
-            'port' => env('ELASTIC_PORT', 9200),
+            'host' => Env::get('ELASTIC_HOST', 'localhost'),
+            'port' => Env::get('ELASTIC_PORT', 9200),
 
         ],
 
