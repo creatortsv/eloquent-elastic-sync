@@ -41,6 +41,6 @@
         }
     },
     "scripts": {
-        "test": "vendor/bin/phpunit -v --testdox --colors=always --coverage-clover coverage.xml"
+        "test": "php -dauto_prepend_file=./tests/xdebug_filter.php vendor/bin/phpunit -v --testdox --colors=always --coverage-clover coverage.xml"
     }
 }
