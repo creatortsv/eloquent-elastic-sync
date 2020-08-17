@@ -8,6 +8,7 @@ use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Psr7\Request as AsyncRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Config;
 use Psr\Http\Message\ResponseInterface;
 
 use function GuzzleHttp\json_encode;
@@ -27,9 +28,9 @@ class ElasticObserver
      */
     public function __construct()
     {
-        $conn = config('elastic_sync.connection', 'default');
-        $host = config("elastic_sync.connections.$conn.host");
-        $port = config("elastic_sync.connections.$conn.port");
+        $conn = Config::get('elastic_sync.connection', 'default');
+        $host = Config::get("elastic_sync.connections.$conn.host");
+        $port = Config::get("elastic_sync.connections.$conn.port");
 
         $this->client = new Client([
             'base_uri' => 'http://' . $host . ':' . $port . '/',
@@ -50,28 +51,10 @@ class ElasticObserver
      * @param Model $model
      * @return void
      */
-    public function created(Model $model): void
+    public function saved(Model $model): void
     {
         $data = self::getData($model);
-        $uri  = self::uri($model, '/_doc/' . $data[config('elastic_sync.indexes.index_id_field', 'id')]);
-        $this
-            ->async(Request::METHOD_PUT, $uri, $data)
-            ->then(function (ResponseInterface $response): void {
-                /** TODO: event */
-            }, function (RequestException $e): void {
-                /** TODO: event */
-            })
-            ->wait();
-    }
-
-    /**
-     * @param Model $model
-     * @return void
-     */
-    public function updated(Model $model): void
-    {
-        $data = self::getData($model);
-        $uri  = self::uri($model, '/_update/' . $data[config('elastic_sync.indexes.index_id_field', 'id')]);
+        $uri  = self::uri($model, '/_doc/' . $data[Config::get('elastic_sync.indexes.index_id_field', 'id')]);
         $this
             ->async(Request::METHOD_PUT, $uri, $data)
             ->then(function (ResponseInterface $response): void {
@@ -89,7 +72,7 @@ class ElasticObserver
     public function deleted(Model $model): void
     {
         $data = self::getData($model);
-        $uri  = self::uri($model, '/_doc/' . $data[config('elastic_sync.indexes.index_id_field', 'id')]);
+        $uri  = self::uri($model, '/_doc/' . $data[Config::get('elastic_sync.indexes.index_id_field', 'id')]);
         $this
             ->async(Request::METHOD_DELETE, $uri)
             ->then(function (ResponseInterface $response): void {
@@ -133,9 +116,13 @@ class ElasticObserver
 
         /** 1. Create data from the mapping */
         if (!$maps) {
-            $data = config('elastic_sync.use_mutated_fields')
-                ? $model->attributesToArray()
-                : $model->getAttributes();
+            $data = $model->getAttributes();
+            Config::get('elastic_sync.use_mutated_fields') && ($data = array_merge(
+                $data,
+                array_combine($model->getMutatedAttributes(), array_map(function (string $attr) use ($model) {
+                    return $model->$attr;
+                }, $model->getMutatedAttributes())),
+            ));
         } else {
             foreach ($maps as $prop => $alias) {
                 $value = collect([$model])

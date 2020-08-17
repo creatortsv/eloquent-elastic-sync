@@ -4,6 +4,7 @@ namespace Creatortsv\EloquentElasticSync;
 
 use Closure;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Config;
 
 /**
  * Needs to setting up an elastic config eloquent model
@@ -79,16 +80,16 @@ class ElasticIndexConfig
      */
     public function addExtra(string $name, $value): self
     {
-        $this->fields[$name] = $value;
+        $this->extra[$name] = $value;
         return $this;
     }
 
     /**
      * Set callback function for the mapping fields
-     * @param Closure $mapping
+     * @param Closure|null $mapping
      * @return self
      */
-    public function setMapping(Closure $mapping): self
+    public function setMapping(Closure $mapping = null): self
     {
         $this->mapping = $mapping;
         return $this;
@@ -100,7 +101,7 @@ class ElasticIndexConfig
      */
     public function index(): string
     {
-        return $this->name ?? config('elastic_sync.indexes.default') ?? (new $this->class)->getTable();
+        return $this->name ?? Config::get('elastic_sync.indexes.default') ?? (new $this->class)->getTable();
     }
 
     /**
@@ -130,16 +131,16 @@ class ElasticIndexConfig
     public function execMapping(Model $model): array
     {
         if ($this->mapping !== null) {
-            return call_user_func($this->mapping, $model);
+            return static::createMap(call_user_func($this->mapping, $model));
         }
 
-        $conf = config('elastic_sync.indexes.' . $this->index(), []);
+        $conf = Config::get('elastic_sync.indexes.' . $this->index(), []);
         $maps = array_merge(
             static::createMap($conf['base_mapping'] ?? []),
             static::createMap($conf[$this->class] ?? []),
         );
 
-        return $maps; /* ?: static::createMap(array_keys($model->attributesToArray())); */
+        return $maps;
     }
 
     /**

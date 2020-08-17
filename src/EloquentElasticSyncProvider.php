@@ -3,6 +3,7 @@
 namespace Creatortsv\EloquentElasticSync;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Config;
 use Creatortsv\EloquentElasticSync\Commands\Sync;
 use GuzzleHttp\{
     Client,
@@ -25,9 +26,9 @@ class EloquentElasticSyncProvider extends ServiceProvider
             ->when(Sync::class)
             ->needs(ClientInterface::class)
             ->give(function (): ClientInterface {
-                $conn = config('elastic_sync.connection', 'default');
-                $host = config("elastic_sync.connections.$conn.host");
-                $port = config("elastic_sync.connections.$conn.port");
+                $conn = Config::get('elastic_sync.connection', 'default');
+                $host = Config::get("elastic_sync.connections.$conn.host");
+                $port = Config::get("elastic_sync.connections.$conn.port");
 
                 return new Client([
                     'base_uri' => 'http://' . $host . ':' . $port . '/',
