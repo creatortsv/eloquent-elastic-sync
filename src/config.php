@@ -19,8 +19,8 @@ return [
          */
         'default' => [
 
-            'host' => Env::get('ELASTIC_HOST', 'localhost'),
-            'port' => Env::get('ELASTIC_PORT', 9200),
+            'host' => 'localhost',
+            'port' => 9200,
 
         ],
 
