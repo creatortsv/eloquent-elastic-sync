@@ -29,18 +29,6 @@ class TestCase extends FrameworkTestCase
 	{
 		parent::setUp();
 
-		Config::shouldReceive('get')
-			->with('elastic_sync.connection', 'default')
-			->andReturn('default');
-
-		Config::shouldReceive('get')
-			->with('elastic_sync.connections.default.host')
-			->andReturn('localhost');
-
-		Config::shouldReceive('get')
-			->with('elastic_sync.connections.default.port')
-			->andReturn('9200');
-
 		$this->model = new class ([
 			'id' => 1,
 			'name' => 'John Smith',
@@ -50,7 +38,6 @@ class TestCase extends FrameworkTestCase
 			use ElasticObservant;
 
 			protected $table = 'users';
-
 			protected $fillable = [
 				'id',
 				'name',
@@ -70,7 +57,6 @@ class TestCase extends FrameworkTestCase
 		]) extends Model
 		{
 			protected $table = 'posts';
-
 			protected $fillable = [
 				'id',
 				'name',

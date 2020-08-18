@@ -11,7 +11,6 @@ class ElasticObserverTest extends TestCase
 {
 	/**
 	 * @return void
-	 * @covers Creatortsv\EloquentElasticSync\ElasticObserver::getData
 	 */
 	public function testGetModelDataWithDefaultConfiguration(): void
 	{
@@ -31,7 +30,6 @@ class ElasticObserverTest extends TestCase
 
 	/**
 	 * @depends testGetModelDataWithDefaultConfiguration
-	 * @covers Creatortsv\EloquentElasticSync\ElasticObserver::getData
 	 * @return void
 	 */
 	public function testGetModelDataWithMutatedFields(): void
@@ -52,7 +50,6 @@ class ElasticObserverTest extends TestCase
 
 	/**
 	 * @depends testGetModelDataWithMutatedFields
-	 * @covers Creatortsv\EloquentElasticSync\ElasticObserver::getData
 	 * @return void
 	 */
 	public function testGetModelDataWithConfigMapping(): void
@@ -78,7 +75,6 @@ class ElasticObserverTest extends TestCase
 
 	/**
 	 * @depends testGetModelDataWithConfigMapping
-	 * @covers Creatortsv\EloquentElasticSync\ElasticObserver::getData
 	 * @return void
 	 */
 	public function testGetModelDataWithExtraFields(): void
@@ -100,7 +96,6 @@ class ElasticObserverTest extends TestCase
 
 	/**
 	 * @depends testGetModelDataWithExtraFields
-	 * @covers Creatortsv\EloquentElasticSync\ElasticObserver::getData
 	 * @return void
 	 */
 	public function testGetModelDataWithModifieredFieldValues(): void
@@ -137,7 +132,6 @@ class ElasticObserverTest extends TestCase
 
 	/**
 	 * @depends testGetModelDataWithModifieredFieldValues
-	 * @covers Creatortsv\EloquentElasticSync\ElasticObserver::getData
 	 * @return void
 	 */
 	public function testGetModelDataWithCustomMappingAndRelations(): void
@@ -172,5 +166,31 @@ class ElasticObserverTest extends TestCase
 				['some' => 'value'],
 			],
 		], $data, 'Data should be equal to config attributes from the model with modifiers');
+	}
+
+	/**
+	 * @dataProvider methodsProvider
+	 * @param string $through
+	 * @return void
+	 */
+	public function testCallMethodsFromElasticConfig(string $through): Void
+	{
+		$class = get_class($this->model);
+		$observer = new ElasticObserver($class);
+		$this->assertTrue(method_exists($class::elastic(), $through));
+		$this->assertIsCallable([$observer, $through]);
+	}
+
+	/**
+	 * @return array
+	 */
+	public function methodsProvider(): array
+	{
+		return [
+			['connection'],
+			['index'],
+			['getCallbacks'],
+			['getExtra'],
+		];
 	}
 }

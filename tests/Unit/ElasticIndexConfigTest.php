@@ -4,100 +4,28 @@ namespace Creatortsv\EloquentElasticSync\Test\Unit;
 
 use Creatortsv\EloquentElasticSync\ElasticIndexConfig;
 use Creatortsv\EloquentElasticSync\Test\TestCase;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Config;
 
 class ElasticIndexConfigTest extends TestCase
 {
     /**
-     * @var Model
-     */
-    protected $model;
-
-    /**
-     * @var ElasticIndexConfig
-     */
-    protected $config;
-
-    /**
      * @return void
      */
-    public function setUp(): void
-    {
-        $this->model = new class ([
-            'id' => 1,
-            'name' => 'John Smith',
-            'email' => 'some@email.com',
-        ]) extends Model
-        {
-            protected $table = 'users';
-
-            protected $fillable = [
-                'id',
-                'name',
-                'email',
-            ];
-
-            public function getFullNameAttribute(): string
-            {
-                return $this->name . ' ' . $this->email;
-            }
-        };
-
-        $this->model->setRelation('posts', new Collection([new class ([
-            'id' => 1,
-            'name' => 'Some post',
-            'author_id' => 1,
-        ]) extends Model
-        {
-            protected $table = 'posts';
-
-            protected $fillable = [
-                'id',
-                'name',
-                'author_id',
-            ];
-        }]));
-
-        $this->config = new ElasticIndexConfig(get_class($this->model));
-    }
-
-    /**
-     * @return void
-     */
-    public function tearDown(): void
-    {
-        $this->model = null;
-        $this->config = null;
-    }
-
-    /**
-     * @covers Creatortsv\EloquentElasticSync\ElasticIndexConfig::connection
-     * @covers Creatortsv\EloquentElasticSync\ElasticIndexConfig::setConnection
-     * @return void
-     */
-    public function testConfigureConnectionName(): void
+    public function testConfigurationConnectionName(): void
     {
         $name = 'my-connection';
-        Config::shouldReceive('get')
-            ->once()
-            ->with('elastic_sync.connection', 'default')
-            ->andReturn('default');
-
-        $this->assertNotEquals($name, $this->config->connection());
-        $this->assertEquals('default', $this->config->connection());
-
+        $connection = $this->config->connection();
+        $this->assertNotEmpty($name, $connection, 'It should not be empty by default');
+        $this->assertEquals('default', $connection, 'It should be "default" by default');
         $this->config->setConnection($name);
-        $this->assertEquals($name, $this->config->connection());
+        $this->assertEquals($name, $this->config->connection(), 'It should be equal to setting up by the code');
     }
 
     /**
-     * @covers Creatortsv\EloquentElasticSync\ElasticIndexConfig::index
-     * @covers Creatortsv\EloquentElasticSync\ElasticIndexConfig::setIndexName
      * @return void
      */
-    public function testConfigurationOfElasticIndexName(): void
+    public function testConfigurationElasticIndexName(): void
     {
         Config::shouldReceive('get')
             ->once()
