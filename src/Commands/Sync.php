@@ -3,13 +3,10 @@
 namespace Creatortsv\EloquentElasticSync\Commands;
 
 use Creatortsv\EloquentElasticSync\ElasticObserver;
-use GuzzleHttp\Client;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\GuzzleException;
-use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Psr7\Request as GuzzleRequest;
 use Illuminate\Http\Request;
-use Psr\Http\Message\ResponseInterface;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Config;
