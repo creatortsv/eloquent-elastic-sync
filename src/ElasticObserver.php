@@ -10,6 +10,7 @@ use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Psr7\Request as AsyncRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Event;
 use Psr\Http\Message\ResponseInterface;
 
 /**
@@ -54,11 +55,6 @@ class ElasticObserver
     {
         $this
             ->async(Request::METHOD_PUT, ...$this->uri($model))
-            ->then(function (ResponseInterface $response): void {
-                /** TODO: event */
-            }, function (RequestException $e): void {
-                /** TODO: event */
-            })
             ->wait();
     }
 
@@ -70,11 +66,6 @@ class ElasticObserver
     {
         $this
             ->async(Request::METHOD_DELETE, $this->uri($model)[0])
-            ->then(function (ResponseInterface $response): void {
-                /** TODO: event */
-            }, function (RequestException $e): void {
-                /** TODO: Exception */
-            })
             ->wait();
     }
 
@@ -91,12 +82,21 @@ class ElasticObserver
         array $body = [],
         array $headers = []
     ): PromiseInterface {
+        $type = $method === Request::METHOD_DELETE
+            ? 'deleted'
+            : 'saved';
+
         return $this
             ->client()
             ->sendAsync(new AsyncRequest($method, $uri, $headers ?: [
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
-            ], json_encode($body)));
+            ], json_encode($body)))
+            ->then(function (ResponseInterface $response) use ($type): void {
+                ($event = Config::get('elastic_sync.events.' . $type)) && Event::fire(new $event($response));
+            }, function (RequestException $e): void {
+                ($event = Config::get('elastic_sync.events.failed')) && Event::fire(new $event($e));
+            });
     }
 
     /**
@@ -114,9 +114,9 @@ class ElasticObserver
             $data = $model->getAttributes();
             Config::get('elastic_sync.use_mutated_fields') && ($data = array_merge(
                 $data,
-                array_combine($model->getMutatedAttributes(), array_map(function (string $attr) use ($model) {
+                array_combine($mutated = $model->getMutatedAttributes(), array_map(function (string $attr) use ($model) {
                     return $model->$attr;
-                }, $model->getMutatedAttributes())),
+                }, $mutated)),
             ));
         } else {
             foreach ($maps as $prop => $alias) {

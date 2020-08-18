@@ -5,15 +5,14 @@ namespace Creatortsv\EloquentElasticSync\Commands;
 use Creatortsv\EloquentElasticSync\ElasticObserver;
 use GuzzleHttp\Client;
 use GuzzleHttp\ClientInterface;
+use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Psr7\Request as GuzzleRequest;
 use Illuminate\Http\Request;
 use Psr\Http\Message\ResponseInterface;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Model;
-
-use function GuzzleHttp\json_decode;
-use function GuzzleHttp\json_encode;
+use Illuminate\Support\Facades\Config;
 
 /**
  * Artisan command
@@ -77,21 +76,24 @@ class Sync extends Command
 
         foreach ($classes as $class) {
             $this->info('Start sync for the class: ' . $class);
-            $class::boot();
+            $class::booted();
 
-            $this
-                ->client
-                ->send(new GuzzleRequest(Request::METHOD_DELETE, $class::getElasticIndex(), [
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                ]));
+            try {
+                $this
+                    ->client
+                    ->send(new GuzzleRequest(Request::METHOD_DELETE, $index = $class::elastic()->index(), [
+                        'Content-Type' => 'application/json',
+                        'Accept' => 'application/json',
+                    ]));
+            } catch (GuzzleException $e) {
+            }
 
             $bulk = [];
-            $index = $class::getElasticIndex();
             $class::all()
                 ->each(function (Model $model) use (&$bulk, $index): void {
-                    $bulk[] = ['index' => ['_index' => $index, '_id' => $model->getIndexId()]];
-                    $bulk[] = ElasticObserver::getData($model);
+                    $data = ElasticObserver::getData($model);
+                    $bulk[] = ['index' => ['_index' => $index, '_id' => $data[Config::get('elastic_sync.indexes.index_id_field', 'id')]]];
+                    $bulk[] = $data;
                 });
 
             if ($bulk) {
@@ -100,7 +102,7 @@ class Sync extends Command
                     ->send(new GuzzleRequest(Request::METHOD_POST, '_bulk', [
                         'Content-Type' => 'application/json',
                         'Accept' => 'application/json',
-                    ], $bulk));
+                    ], json_encode($bulk)));
 
                 dd(json_decode($response->getBody(), true));
             }

@@ -5,12 +5,12 @@ use Illuminate\Support\Env;
 return [
 
     /*
-     * Which connection settings will be used
-     */
+ * Which connection settings will be used
+ */
     'connection' => 'default',
 
     /*
-     * Describe different connections
+ * Describe different connections
      */
     'connections' => [
 
@@ -70,5 +70,15 @@ return [
         ], */
 
     ],
+
+    /**
+     * Event classes
+    'events' => [
+
+        'saved' => Event::class,
+        'deleted' => Event::class,
+        'failed' => Event::class,
+
+    ], */
 
 ];
