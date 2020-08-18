@@ -90,17 +90,17 @@ class Sync extends Command
             $class::all()
                 ->each(function (Model $model) use (&$bulk, $index): void {
                     $data = ElasticObserver::getData($model);
-                    $bulk[] = ['index' => ['_index' => $index, '_id' => $data[Config::get('elastic_sync.indexes.index_id_field', 'id')]]];
-                    $bulk[] = $data;
+                    $bulk[] = json_encode(['index' => ['_index' => $index, '_id' => $data[Config::get('elastic_sync.indexes.index_id_field', 'id')]]]);
+                    $bulk[] = json_encode($data);
                 });
 
             if ($bulk) {
-                $response = $this
+                $this
                     ->client
                     ->send(new GuzzleRequest(Request::METHOD_POST, '_bulk', [
                         'Content-Type' => 'application/json',
                         'Accept' => 'application/json',
-                    ], json_encode($bulk)));
+                    ], implode("\n", $bulk) . "\n"));
             }
 
             $this->info('Sync for the class: ' . $class . ' done!');
