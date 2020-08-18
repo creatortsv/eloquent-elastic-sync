@@ -24,7 +24,8 @@ class Sync extends Command
      */
     protected $signature = 'elastic:sync
         {model?* : Concrete classes of an eloquent model}
-        {--namespace=* : Namespace of eloquent classes}';
+        {--namespace=* : Namespace of eloquent classes}
+        {--resource=* : Json file with data}';
 
     /**
      * @var string
@@ -103,11 +104,25 @@ class Sync extends Command
                         'Content-Type' => 'application/json',
                         'Accept' => 'application/json',
                     ], json_encode($bulk)));
-
-                dd(json_decode($response->getBody(), true));
             }
 
-            $this->info('sync for the class: ' . $class . ' done!');
+            $this->info('Sync for the class: ' . $class . ' done!');
+        }
+
+        foreach ($this->option('resource') as $src) {
+            if (!file_exists($src)) {
+                $this->error('File not found: ' . $src);
+            };
+
+            $this->info('Start sync for the file: ' . $src);
+            $response = $this
+                ->client
+                ->send(new GuzzleRequest(Request::METHOD_POST, '_bulk', [
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                ], file_get_contents($src)));
+
+            $this->info('Sync for the file: ' . $src . ' done!');
         }
     }
 
