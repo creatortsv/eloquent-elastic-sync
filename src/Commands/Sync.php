@@ -73,70 +73,77 @@ class Sync extends Command
             }
         }
 
+        empty($classes)
+            ? $this->error('Classes not found!' . PHP_EOL)
+            : $this->info('Next classes will be syncronized:' . PHP_EOL);
+
+        array_walk($classes, (function (string $class): void {
+            $this->line($class);
+        })->bindTo($this)) && $this->info(PHP_EOL);
+
         foreach ($classes as $class) {
-            $this->info('Start sync for the class: ' . $class);
             $class::booted();
+            $this->info('*** Prepare syncronization for the class ' . $class . ' ***' . PHP_EOL);
+            $this->line('Host: ' . Config::get('elastic_sync.connection.' . $class::elastic()->connection() . '.host', 'localhost'));
+            $this->line('Port: ' . Config::get('elastic_sync.connection.' . $class::elastic()->connection() . '.port', 9200));
+            $this->line('Index name: ' . $index = $class::elastic()->index((new $class)->getTable()) . PHP_EOL);
 
             try {
-                $response = json_decode($this
+                json_decode($this
                     ->client
-                    ->send(new GuzzleRequest(Request::METHOD_DELETE, $index = $class::elastic()->index(), [
+                    ->send(new GuzzleRequest(Request::METHOD_DELETE, $index, [
                         'Content-Type' => 'application/json',
                         'Accept' => 'application/json',
                     ]))
                     ->getBody(), true);
 
-                $this->info('Delete index: ' . $class . ' done!');
+                $this->info('Index name: ' . $index . ' has been deleted' . PHP_EOL);
             } catch (GuzzleException $e) {
-                $this->info('Nothing to delete with index name ' . $index);
             }
 
-            $this->info('Build data of the ' . $class . ' items');
-            $bulk = [];
-            $progress = $this->output->createProgressBar($class::count());
-            $progress->start();
-            $class::chunk(250, function (Collection $collection) use (&$bulk, $index, $progress): void {
-                $collection->each(function (Model $model) use (&$bulk, $index, $progress): void {
-                    $data = (new ElasticObserver)
-                        ->init($model)
-                        ->getData($model);
+            $this->info('Start syncronisation for ' . $class::count() . ' items ... ');
+            $class::chunk(250, (function (Collection $collection): void {
+                $bulk = [];
+                $progress = $this->output->createProgressBar($collection->count());
+                $progress->start();
+                $collection->each(function (Model $model) use (&$bulk, $progress): void {
+                    $observer = new ElasticObserver;
+                    $observer->init($model);
 
-                    $bulk[] = json_encode(['index' => ['_index' => $index, '_id' => $data[Config::get('elastic_sync.indexes.index_id_field', 'id')]]]);
+                    $data = $observer->getData($model);
+                    $bulk[] = json_encode(['index' => ['_index' => $observer->index($model->getTable()), '_id' => $data[$observer->fieldId()]]]);
                     $bulk[] = json_encode($data);
                     $progress->advance();
                 });
-            });
 
-            $progress->finish();
+                if ($bulk) {
+                    $this
+                        ->client
+                        ->send(new GuzzleRequest(Request::METHOD_POST, '_bulk', [
+                            'Content-Type' => 'application/json',
+                            'Accept' => 'application/json',
+                        ], implode("\n", $bulk) . "\n"));
+                }
 
-            if ($bulk) {
-                $this
-                    ->client
-                    ->send(new GuzzleRequest(Request::METHOD_POST, '_bulk', [
-                        'Content-Type' => 'application/json',
-                        'Accept' => 'application/json',
-                    ], implode("\n", $bulk) . "\n"));
-
-                $this->info('Sync for the class: ' . $class . ' done!');
-            } else {
-                $this->info('Nothing to index with the class ' . $class);
-            }
+                $progress->finish();
+            })->bindTo($this));
+            $this->info('*** Syncronization for the class ' . $class . ' completed! ***' . PHP_EOL);
         }
 
         foreach ($this->option('resource') as $src) {
-            $this->info('Start sync with resource: ' . $src);
+            $this->info('*** Start syncronization with resource: ' . $src . ' ***' . PHP_EOL);
             if (!file_exists($src)) {
                 $this->error('File not found: ' . $src);
             };
 
-            $response = $this
+            $this
                 ->client
                 ->send(new GuzzleRequest(Request::METHOD_POST, '_bulk', [
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
                 ], file_get_contents($src)));
 
-            $this->info('Sync with resource: ' . $src . ' done!');
+            $this->info('*** Syncronization with resource: ' . $src . ' completed! ***' . PHP_EOL);
         }
     }
 
