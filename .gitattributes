@@ -1,0 +1,8 @@
+/.gitattributes     export-ignore
+/.gitignore
+/.github
+/tests
+/phpunit.xml
+/README.md
+
+* text=auto eol=lf
