@@ -70,7 +70,8 @@ class ElasticObserver
     {
         $this
             ->init($model)
-            ->async(...$this->requestArguments(Request::METHOD_PUT));
+            ->async(...$this->requestArguments(Request::METHOD_PUT))
+            ->wait();
     }
 
     /**
@@ -81,7 +82,8 @@ class ElasticObserver
     {
         $this
             ->init($model)
-            ->async(...$this->requestArguments(Request::METHOD_DELETE, false));
+            ->async(...$this->requestArguments(Request::METHOD_DELETE, false))
+            ->wait();
     }
 
     /**
@@ -116,8 +118,7 @@ class ElasticObserver
                 ($event = Config::get('elastic_sync.events.' . $type)) && Event::fire(new $event($response));
             }, function (RequestException $e): void {
                 ($event = Config::get('elastic_sync.events.failed')) && Event::fire(new $event($e));
-            })
-            ->wait();
+            });
     }
 
     /**
