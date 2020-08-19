@@ -217,10 +217,10 @@ class ElasticObserverTest extends TestCase
 	public function methodsProvider(): array
 	{
 		return [
-			['connection'],
-			['index'],
-			['getCallbacks'],
-			['getExtra'],
+			'Connection method' => ['connection'],
+			'Index method' => ['index'],
+			'GetCallbacks method' => ['getCallbacks'],
+			'GetExtra method' => ['getExtra'],
 		];
 	}
 }

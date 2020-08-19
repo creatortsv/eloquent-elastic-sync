@@ -6,6 +6,7 @@ use PHPUnit\Framework\TestCase as FrameworkTestCase;
 use Creatortsv\EloquentElasticSync\ElasticObservant;
 use Illuminate\Database\Eloquent\Model;
 use Faker\Factory;
+use Illuminate\Support\Facades\Config;
 
 class TestCase extends FrameworkTestCase
 {
@@ -25,6 +26,11 @@ class TestCase extends FrameworkTestCase
 	public function setUp(): void
 	{
 		parent::setUp();
+
+		Config::shouldReceive('get')
+			->once()
+			->with('elastic_sync.disabled', false)
+			->andReturn(false);
 
 		$faker = Factory::create();
 		$this->model = $this->createModel('flights', [
