@@ -24,12 +24,14 @@ class ElasticObserver
     protected $class;
 
     /**
-     * Constructor
+     * @var Model
      */
-    public function __construct(string $config)
-    {
-        $this->class = $config;
-    }
+    protected $model;
+
+    /**
+     * @var array
+     */
+    protected $data;
 
     /**
      * @param string $name
@@ -38,13 +40,26 @@ class ElasticObserver
      */
     public function __call($name, $arguments)
     {
-        if (method_exists($this->class::elastic(), $name)) {
-            return $this->class::elastic()->$name(...$arguments);
-        }
-
         if (method_exists($this, $name)) {
             return $this->$name(...$arguments);
         }
+
+        if (method_exists($this->class::elastic(), $name)) {
+            return $this->class::elastic()->$name(...$arguments);
+        }
+    }
+
+    /**
+     * Required method before doing some action
+     * @param Model $model
+     * @return ElasticObserver
+     */
+    public function init(Model $model): self
+    {
+        $this->class = get_class($model);
+        $this->model = $model;
+        $this->data = $this->getData();
+        return $this;
     }
 
     /**
@@ -54,8 +69,8 @@ class ElasticObserver
     public function saved(Model $model): void
     {
         $this
-            ->async(Request::METHOD_PUT, ...$this->uri($model))
-            ->wait();
+            ->init($model)
+            ->async(...$this->requestArguments(Request::METHOD_PUT));
     }
 
     /**
@@ -65,8 +80,8 @@ class ElasticObserver
     public function deleted(Model $model): void
     {
         $this
-            ->async(Request::METHOD_DELETE, $this->uri($model)[0])
-            ->wait();
+            ->init($model)
+            ->async(...$this->requestArguments(Request::METHOD_DELETE, false));
     }
 
     /**
@@ -82,9 +97,14 @@ class ElasticObserver
         array $body = [],
         array $headers = []
     ): PromiseInterface {
-        $type = $method === Request::METHOD_DELETE
-            ? 'deleted'
-            : 'saved';
+        switch ($method) {
+            case Request::METHOD_PUT:
+            case Request::METHOD_POST:
+                $type = 'saved';
+                break;
+            default:
+                $type = 'deleted';
+        }
 
         return $this
             ->client()
@@ -96,51 +116,55 @@ class ElasticObserver
                 ($event = Config::get('elastic_sync.events.' . $type)) && Event::fire(new $event($response));
             }, function (RequestException $e): void {
                 ($event = Config::get('elastic_sync.events.failed')) && Event::fire(new $event($e));
-            });
+            })
+            ->wait();
     }
 
     /**
-     * @param Model $model
      * @return array
      */
-    public static function getData(Model $model): array
+    public function getData(): array
     {
-        $class = get_class($model);
-        $maps = $class::elastic()->execMapping($model);
+        $maps = $this->execMapping($this->model);
         $data = [];
 
         /** 1. Create data from the mapping */
         if (!$maps) {
-            $data = $model->getAttributes();
-            Config::get('elastic_sync.use_mutated_fields') && ($data = array_merge(
-                $data,
-                array_combine($mutated = $model->getMutatedAttributes(), array_map(function (string $attr) use ($model) {
-                    return $model->$attr;
-                }, $mutated)),
-            ));
+            $data = $this
+                ->model
+                ->getAttributes();
+
+            if (Config::get('elastic_sync.use_mutated_fields')) {
+                $data = array_merge($data, array_combine($mutated = $this->model->getMutatedAttributes(), array_map((function (string $attr) {
+                    return $this->model->$attr;
+                })->bindTo($this), $mutated)));
+            }
         } else {
+            $collect = collect([$this->model]);
             foreach ($maps as $prop => $alias) {
-                $value = collect([$model])
+                $value = $collect
                     ->pluck($alias)
                     ->first();
 
                 $data[$prop] = $value;
             }
+
+            unset($collect);
         }
 
         /** 2. Add extra fields */
-        foreach ($class::elastic()->getExtra() as $prop => $value) {
+        foreach ($this->getExtra() as $prop => $value) {
             if (!isset($data[$prop])) {
                 $data[$prop] = is_callable($value)
-                    ? $value($model)
+                    ? $value($this->model)
                     : $value;
             }
         }
 
         /** 3. Apply callbacks to fields */
         foreach ($data as $prop => &$value) {
-            foreach ($class::elastic()->getCallbacks($prop) as $callback) {
-                $value = $callback($value, $data, $model);
+            foreach ($this->getCallbacks($prop) as $callback) {
+                $value = $callback($value, $data, $this->model);
             }
 
             $data[$prop] = $value;
@@ -150,23 +174,23 @@ class ElasticObserver
     }
 
     /**
-     * @param Model $model
+     * @param string $method
      * @return array
      */
-    protected function uri(Model $model): array
+    protected function requestArguments(string $method, bool $useBody = true): array
     {
-        $idProp = Config::get('elastic_sync.indexes.index_id_field', 'id');
-        $data = self::getData($model);
-        $guid = $data[$idProp] ?? null;
+        $prop = $this->fieldId();
+        $guid = $this->data[$prop] ?? null;
+        $args = [$method];
 
         if (!$guid) {
-            throw new Exception('Data must contain the "' . $idProp . '" property');
+            throw new Exception('Data must contain the "' . $prop . '" property');
         }
 
-        return [
-            $this->index() . '/_doc/' . $guid,
-            $data,
-        ];
+        array_push($args, ($this->index() ?? $this->model->getTable()) . '/_doc/' . $guid);
+        $useBody && array_push($args, $this->data);
+
+        return $args;
     }
 
     /**

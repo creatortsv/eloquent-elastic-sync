@@ -3,12 +3,9 @@
 namespace Creatortsv\EloquentElasticSync\Test;
 
 use PHPUnit\Framework\TestCase as FrameworkTestCase;
-use Creatortsv\EloquentElasticSync\ElasticIndexConfig;
 use Creatortsv\EloquentElasticSync\ElasticObservant;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Config;
+use Faker\Factory;
 
 class TestCase extends FrameworkTestCase
 {
@@ -18,9 +15,9 @@ class TestCase extends FrameworkTestCase
 	protected $model;
 
 	/**
-	 * @var ElasticIndexConfig
+	 * @var string
 	 */
-	protected $config;
+	protected $class;
 
 	/**
 	 * @return void
@@ -29,42 +26,20 @@ class TestCase extends FrameworkTestCase
 	{
 		parent::setUp();
 
-		$this->model = new class ([
-			'id' => 1,
-			'name' => 'John Smith',
-			'email' => 'some@email.com',
-		]) extends Model
-		{
-			use ElasticObservant;
+		$faker = Factory::create();
+		$this->model = $this->createModel('flights', [
+			'id' => $faker->numberBetween(1, 10),
+			'name' => $faker->company,
+		]);
 
-			protected $table = 'users';
-			protected $fillable = [
-				'id',
-				'name',
-				'email',
-			];
+		$this
+			->model
+			->setRelation('destination', $this->createModel('destinations', [
+				'id' => $faker->numberBetween(1, 10),
+				'name' => $faker->country,
+			]));
 
-			public function getFullNameAttribute(): string
-			{
-				return $this->name . ' ' . $this->email;
-			}
-		};
-
-		$this->model->setRelation('post', new class ([
-			'id' => 1,
-			'name' => 'Some post',
-			'author_id' => 1,
-		]) extends Model
-		{
-			protected $table = 'posts';
-			protected $fillable = [
-				'id',
-				'name',
-				'author_id',
-			];
-		});
-
-		$this->config = new ElasticIndexConfig(get_class($this->model));
+		$this->class = get_class($this->model);
 	}
 
 	/**
@@ -74,7 +49,33 @@ class TestCase extends FrameworkTestCase
 	{
 		parent::tearDown();
 
+		get_class($this->model)::elastic(true);
+
 		$this->model = null;
-		$this->config = null;
+		$this->class = null;
+	}
+
+	/**
+	 * @param string $table
+	 * @param array $attributes
+	 * @return Model
+	 */
+	protected function createModel(string $table, array $attributes = []): Model
+	{
+		$model = new class extends Model
+		{
+			use ElasticObservant;
+
+			public function getFullNameAttribute(): string
+			{
+				return $this->getTable() . '.' . $this->name;
+			}
+		};
+
+		$model->setTable($table);
+		$model->fillable(array_keys($attributes));
+		$model->fill($attributes);
+
+		return $model;
 	}
 }

@@ -2,35 +2,37 @@
 
 namespace Creatortsv\EloquentElasticSync;
 
-use Closure;
-
 /**
  * Auto boot trait
  */
 trait ElasticObservant
 {
     /**
-     * @var ElasticConfig
+     * Elasticsearch configuration
+     * @var ElasticIndexConfig
      */
-    protected static $elasticConfig;
+    protected static $elastic;
 
     /**
      * Adds observer to eloquent models for sync with elasticsearch
+     * @return void
      */
     public static function bootElasticObservant(): void
     {
-        static::observe(new ElasticObserver(self::class));
+        static::observe(new ElasticObserver);
     }
 
     /**
+     * Return Elasticsearch configuration
+     * @param bool $clear
      * @return ElasticIndexConfig
      */
-    protected static function elastic(): ElasticIndexConfig
+    protected static function elastic(bool $clear = false): ElasticIndexConfig
     {
-        if (self::$elasticConfig === null) {
-            self::$elasticConfig = new ElasticIndexConfig(self::class);
+        if (self::$elastic === null || $clear) {
+            self::$elastic = new ElasticIndexConfig;
         }
 
-        return self::$elasticConfig;
+        return self::$elastic;
     }
 }

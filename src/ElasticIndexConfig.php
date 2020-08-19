@@ -14,19 +14,19 @@ class ElasticIndexConfig
     /**
      * @var string
      */
-    protected $connection = 'default';
-
-    /**
-     * Class of an eloquent model
-     * @var string
-     */
-    protected $class;
+    protected $connection;
 
     /**
      * Index name
      * @var string
      */
     protected $name;
+
+    /**
+     * ID field of a model value will be used to the index document
+     * @var string
+     */
+    protected $fieldId;
 
     /**
      * The function which generate fields mapping
@@ -48,14 +48,7 @@ class ElasticIndexConfig
     protected $extra = [];
 
     /**
-     * Constructor
-     */
-    public function __construct(string $class)
-    {
-        $this->class = $class;
-    }
-
-    /**
+     * Set connection name
      * @param string $connection
      * @return self
      */
@@ -66,6 +59,9 @@ class ElasticIndexConfig
     }
 
     /**
+     * Get connection name
+     * 1. From elastic config 
+     * 2. From config file
      * @return string
      */
     public function connection(): string
@@ -74,14 +70,46 @@ class ElasticIndexConfig
     }
 
     /**
+     * Set field name of the model
+     * @param string $field
+     * @return string
+     */
+    public function setFieldId(string $field): self
+    {
+        $this->fieldId = $field;
+        return $this;
+    }
+
+    /**
+     * Get field name of the model
+     * 1. From elastic config 
+     * 2. From config file
+     * @return string
+     */
+    public function fieldId(): string
+    {
+        return $this->fieldId ?? Config::get('elastic_sync.index_id_field', 'id');
+    }
+
+    /**
      * Set index name
      * @param string $name
      * @return self
      */
-    public function setIndexName(string $name): self
+    public function setIndex(string $name = null): self
     {
         $this->name = $name;
         return $this;
+    }
+
+    /**
+     * Get the index name
+     * @param string|null $default
+     * @return string|null
+     */
+    public function index(string $default = null)
+    {
+        return $this->name ?? Config::get('elastic_sync.indexes.default') ?? $default;
     }
 
     /**
@@ -97,6 +125,16 @@ class ElasticIndexConfig
     }
 
     /**
+     * Get callbacks for the field name
+     * @param string $name
+     * @return array
+     */
+    public function getCallbacks(string $name): array
+    {
+        return $this->fieldCallbacks[$name] ?? [];
+    }
+
+    /**
      * Add extra field for the elastic document
      * @param string $name
      * @param mixed|Closure $value
@@ -105,6 +143,15 @@ class ElasticIndexConfig
     {
         $this->extra[$name] = $value;
         return $this;
+    }
+
+    /**
+     * Get extra fields
+     * @return array
+     */
+    public function getExtra(): array
+    {
+        return $this->extra;
     }
 
     /**
@@ -119,34 +166,6 @@ class ElasticIndexConfig
     }
 
     /**
-     * Get the index name
-     * @return string
-     */
-    public function index(): string
-    {
-        return $this->name ?? Config::get('elastic_sync.indexes.default') ?? (new $this->class)->getTable();
-    }
-
-    /**
-     * Get callbacks for the field name
-     * @param string $name
-     * @return array
-     */
-    public function getCallbacks(string $name): array
-    {
-        return $this->fieldCallbacks[$name] ?? [];
-    }
-
-    /**
-     * Get extra fields
-     * @return array
-     */
-    public function getExtra(): array
-    {
-        return $this->extra;
-    }
-
-    /**
      * Execute mapping callback function
      * @param Model $model
      * @return array
@@ -157,10 +176,10 @@ class ElasticIndexConfig
             return static::createMap(call_user_func($this->mapping, $model));
         }
 
-        $conf = Config::get('elastic_sync.indexes.' . $this->index(), []);
+        $conf = Config::get('elastic_sync.indexes.' . $this->index($model->getTable()), []);
         $maps = array_merge(
             static::createMap($conf['base_mapping'] ?? []),
-            static::createMap($conf[$this->class] ?? []),
+            static::createMap($conf[get_class($model)] ?? []),
         );
 
         return $maps;

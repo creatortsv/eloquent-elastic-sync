@@ -6,45 +6,88 @@ use Creatortsv\EloquentElasticSync\ElasticIndexConfig;
 use Creatortsv\EloquentElasticSync\Test\TestCase;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Str;
 
 class ElasticIndexConfigTest extends TestCase
 {
     /**
-     * @return void
+     * @return array
      */
-    public function testConfigurationConnectionName(): void
+    public function configurationProvider(): array
     {
-        $name = 'my-connection';
-        $connection = $this->config->connection();
-        $this->assertNotEmpty($name, $connection, 'It should not be empty by default');
-        $this->assertEquals('default', $connection, 'It should be "default" by default');
-        $this->config->setConnection($name);
-        $this->assertEquals($name, $this->config->connection(), 'It should be equal to setting up by the code');
+        return [
+            'connection option' => ['elastic_sync.connection', 'default', 'connection'],
+            'field id name option' => ['elastic_sync.index_id_field', 'id', 'fieldId'],
+            'index name option' => ['elastic_sync.indexes.default', null, 'index', 'some_table'],
+        ];
     }
 
     /**
+     * @dataProvider configurationProvider
+     * @param string $config
+     * @param string|null $default
+     * @param string $method
+     * @param string $arg
      * @return void
      */
-    public function testConfigurationElasticIndexName(): void
+    public function testDefaultOptionConfiguration(string $config, string $default = null, string $method, string $arg = null): void
     {
         Config::shouldReceive('get')
             ->once()
-            ->with('elastic_sync.indexes.default')
-            ->andReturn(null);
+            ->with(...array_filter([$config, $default]))
+            ->andReturn($default);
 
-        $this->assertNotEmpty($this->config->index(), 'Default index name must be not null');
-        $this->assertNotEquals($name = 'some_index', $this->config->index());
-        $this->assertEquals($this->model->getTable(), $this->config->index(), 'Default index name must be equal to an eloquent model table name');
+        $option = $this
+            ->class::elastic()
+            ->$method($arg);
 
+        $this->assertNotEmpty($option, 'It should not be empty by default');
+        $this->assertEquals($arg ?? $default, $option, 'It should be equal to "' . $default . '" by default');
+    }
+
+    /**
+     * @dataProvider configurationProvider
+     * @depends testDefaultOptionConfiguration
+     * @param string $config
+     * @param string|null $default
+     * @param string $method
+     * @return void
+     */
+    public function testChangedOptionConfigurationByConfig(string $config, string $default = null, string $method): void
+    {
         Config::shouldReceive('get')
             ->once()
-            ->with('elastic_sync.indexes.default')
-            ->andReturn($name);
+            ->with(...array_filter([$config, $default]))
+            ->andReturn($name = 'changed');
 
-        $this->assertEquals($name, $this->config->index(), 'Index name must be equal to the "elastyc_sync.indexes.default" config property if it is defined');
+        $option = $this
+            ->class::elastic()
+            ->$method();
 
-        $this->config->setIndexName($name = 'another_index');
-        $this->assertEquals($name, $this->config->index(), 'Index name must be equal to the "name" property');
+        $this->assertNotEmpty($option, 'It should not be empty');
+        $this->assertEquals($name, $option, 'It should be equal to "' . $name . '"');
+    }
+
+    /**
+     * @dataProvider configurationProvider
+     * @depends testChangedOptionConfigurationByConfig
+     * @param string $config
+     * @param string|null $default
+     * @param string $method
+     * @return void
+     */
+    public function testAssignedOptionConfiguration(string $config, string $default = null, string $method): void
+    {
+        $this
+            ->class::elastic()
+            ->{'set' . Str::ucfirst($method)}($name = 'assigned');
+
+        $option = $this
+            ->class::elastic()
+            ->$method();
+
+        $this->assertNotEmpty($option, 'It should not be empty');
+        $this->assertEquals($name, $option, 'It should be equal to "' . $name . '"');
     }
 
     /**
@@ -54,20 +97,34 @@ class ElasticIndexConfigTest extends TestCase
      */
     public function testAddFieldCallbacks(): void
     {
-        $field = 'test';
-        $this->assertEmpty($this->config->getCallbacks($field), 'It should be empty by default');
+        $this->assertEmpty($this
+            ->class::elastic()
+            ->getCallbacks($field = 'test'), 'It should be empty by default');
 
-        $this->config->addCallback($field, $func = function (): string {
-            return 'some_value';
-        });
+        $this
+            ->class::elastic()
+            ->addCallback($field, function (): string {
+                return 'value 1';
+            });
 
-        $this->config->addCallback($field, $func2 = function (): string {
-            return 'some_value';
-        });
+        $this
+            ->class::elastic()
+            ->addCallback($field, function (): string {
+                return 'value 2';
+            });
 
-        $this->assertNotEmpty($this->config->getCallbacks($field), 'It should not be empty by default');
-        $this->assertCount(2, $this->config->getCallbacks($field), 'Count of functions should be the same as count of method call for the field name');
-        $this->assertEquals([$func, $func2], $this->config->getCallbacks($field));
+        $this->assertNotEmpty($this
+            ->class::elastic()
+            ->getCallbacks($field), 'It should not be empty by default');
+
+        $this->assertCount(2, $callbacks = $this
+            ->class::elastic()
+            ->getCallbacks($field), 'Count of functions should be the same as count of method call for the field name');
+
+        foreach ($callbacks as $i => $callback) {
+            $this->assertTrue(is_callable($callback));
+            $this->assertEquals('value ' . (string)($i + 1), $callback());
+        }
     }
 
     /**
@@ -77,75 +134,133 @@ class ElasticIndexConfigTest extends TestCase
      */
     public function testAddExtraFields(): void
     {
-        $this->assertEmpty($this->config->getExtra(), 'It should be empty by default');
-        $this->config->addExtra('test', 1);
-        $this->assertNotEmpty($this->config->getExtra());
-        $this->assertCount(1, $this->config->getExtra());
-        $this->assertEquals(['test' => 1], $this->config->getExtra());
+        $this->assertEmpty($this
+            ->class::elastic()
+            ->getExtra(), 'It should be empty by default');
+
+        $this
+            ->class::elastic()
+            ->addExtra('one', 1);
+
+        $this
+            ->class::elastic()
+            ->addExtra('two', function (): int {
+                return 2;
+            });
+
+        $this->assertNotEmpty($this
+            ->class::elastic()
+            ->getExtra());
+
+        $this->assertCount(2, $this
+            ->class::elastic()
+            ->getExtra());
+
+        $extra = $this
+            ->class::elastic()
+            ->getExtra();
+
+        $this->assertEquals([
+            'one' => 1,
+            'two' => 2,
+        ], array_map(function ($val): int {
+            return is_callable($val) ? $val() : $val;
+        }, $extra));
     }
 
     /**
-     * @covers Creatortsv\EloquentElasticSync\ElasticIndexConfig::setMapping
      * @covers Creatortsv\EloquentElasticSync\ElasticIndexConfig::execMapping
-     * @return void
+     * @return string
      */
-    public function testExecuteFieldsMapping(): void
+    public function testGetDefaultFieldsOfMapping(): string
+    {
+        $index = $this
+            ->model
+            ->getTable();
+
+        $this
+            ->class::elastic()
+            ->setIndex($index);
+
+        Config::shouldReceive('get')
+            ->once()
+            ->with('elastic_sync.indexes.' . $index, [])
+            ->andReturn(null);
+
+        $this->assertEmpty($this
+            ->class::elastic()
+            ->execMapping($this->model), 'It should be empty by default');
+
+        return $index;
+    }
+
+    /**
+     * @depends testGetDefaultFieldsOfMapping
+     * @covers Creatortsv\EloquentElasticSync\ElasticIndexConfig::execMapping
+     * @param string $index
+     * @return array
+     */
+    public function testGetChangedFieldsOfMappingByConfig(string $index): array
     {
         Config::shouldReceive('get')
             ->once()
-            ->withArgs(['elastic_sync.indexes.' . $this->model->getTable(), []])
-            ->andReturn(null);
-
-        $this->assertEmpty($this->config->execMapping($this->model), 'It should be empty by default');
-
-        Config::shouldReceive('get')
-            ->once()
-            ->withArgs(['elastic_sync.indexes.' . $this->model->getTable(), []])
+            ->with('elastic_sync.indexes.' . $index, [])
             ->andReturn([
                 'base_mapping' => [
                     'id',
                     'name',
                 ],
-                get_class($this->model) => [
-                    'some_email' => 'email',
-                    'posts' => 'posts.name',
+                $this->class => [
+                    'name' => 'full_name',
+                    'post' => 'post.name',
                 ],
             ]);
 
-        $mapping = $this->config->execMapping($this->model);
-        $this->assertNotEmpty($mapping);
+        $mapping = $this
+            ->class::elastic()
+            ->execMapping($this->model);
+
+        $this->assertNotEmpty($mapping, 'It should be not empty');
         $this->assertEquals([
             'id' => 'id',
-            'name' => 'name',
-            'some_email' => 'email',
-            'posts' => 'posts.name',
+            'name' => 'full_name',
+            'post' => 'post.name',
         ], $mapping);
 
-        $mapping = [
-            'some_field' => 'some_value',
-            'another_field' => 'another_value',
-        ];
+        return $mapping;
+    }
 
-        $this->config->setMapping(function (Model $model) use ($mapping): array {
-            $resutl = array_merge($mapping, [
-                'full_name' => 'full_name',
-            ]);
-
-            !$model->exists && ($resutl['third_field'] = 'third_value');
-            return $resutl;
-        });
+    /**
+     * @depends testGetChangedFieldsOfMappingByConfig
+     * @covers Creatortsv\EloquentElasticSync\ElasticIndexConfig::setMapping
+     * @covers Creatortsv\EloquentElasticSync\ElasticIndexConfig::execMapping
+     * @param array $mapping
+     * @return void
+     */
+    public function testGetAssignedFieldsOfMapping(array $mapping): void
+    {
+        $this
+            ->class::elastic()
+            ->setMapping(function () use ($mapping): array {
+                return array_merge($mapping, [
+                    'one' => 'thirst',
+                    'two' => 'second',
+                ]);
+            });
 
         $this->assertEquals(array_merge($mapping, [
-            'full_name' => 'full_name',
-            'third_field' => 'third_value',
-        ]), $this->config->execMapping($this->model));
+            'one' => 'thirst',
+            'two' => 'second',
+        ]), $this
+            ->class::elastic()
+            ->execMapping($this->model));
     }
 
     /**
      * @covers Creatortsv\EloquentElasticSync\ElasticIndexConfig::createMap
      * @return void
      */
-    public function testCreateMapMethod(): void
+    public function testCreatingMapData(): void
     {
         $this->assertEquals([
             'id' => 'id',

@@ -19,13 +19,14 @@ class ElasticObserverTest extends TestCase
 			->with('elastic_sync.use_mutated_fields')
 			->andReturn(false);
 
-		$data = ElasticObserver::getData($this->model);
+		$data = (new ElasticObserver)
+			->init($this->model)
+			->getData();
+
 		$this->assertNotEmpty($data, 'Data must not be empty');
-		$this->assertEquals([
-			'id' => 1,
-			'name' => 'John Smith',
-			'email' => 'some@email.com',
-		], $data, 'Data should be equal to the model attributes');
+		$this->assertEquals($this
+			->model
+			->only(['id', 'name']), $data, 'Data should be equal to the model attributes');
 	}
 
 	/**
@@ -38,14 +39,18 @@ class ElasticObserverTest extends TestCase
 			->with('elastic_sync.use_mutated_fields')
 			->andReturn(true);
 
-		$data = ElasticObserver::getData($this->model);
+		$data = (new ElasticObserver)
+			->init($this->model)
+			->getData();
+
 		$this->assertNotEmpty($data, 'Data must not be empty');
-		$this->assertEquals([
-			'id' => 1,
-			'name' => 'John Smith',
-			'email' => 'some@email.com',
-			'full_name' => 'John Smith some@email.com',
-		], $data, 'Data should be equal to the model attributes with mutated attributes');
+		$this->assertEquals($this
+			->model
+			->only([
+				'id',
+				'name',
+				'full_name',
+			]), $data, 'Data should be equal to the model attributes with mutated attributes');
 	}
 
 	/**
@@ -55,21 +60,26 @@ class ElasticObserverTest extends TestCase
 	public function testGetModelDataWithConfigMapping(): void
 	{
 		Config::shouldReceive('get')
-			->with('elastic_sync.indexes.' . get_class($this->model)::elastic()->index(), [])
+			->with('elastic_sync.indexes.' . $this
+				->class::elastic()
+				->index($this->model->getTable()), [])
 			->andReturn([
-				get_class($this->model) => [
+				$this->class => [
 					'id',
 					'name' => 'full_name',
-					'post.name',
+					'destination.name',
 				],
 			]);
 
-		$data = ElasticObserver::getData($this->model);
+		$data = (new ElasticObserver)
+			->init($this->model)
+			->getData();
+
 		$this->assertNotEmpty($data, 'Data must not be empty');
 		$this->assertEquals([
-			'id' => 1,
-			'name' => 'John Smith some@email.com',
-			'post.name' => 'Some post',
+			'id' => $this->model->id,
+			'name' => $this->model->full_name,
+			'destination.name' => $this->model->destination->name,
 		], $data, 'Data should be equal to config attributes from the model and extra fields');
 	}
 
@@ -79,18 +89,22 @@ class ElasticObserverTest extends TestCase
 	 */
 	public function testGetModelDataWithExtraFields(): void
 	{
-		get_class($this->model)::elastic()
+		$this
+			->class::elastic()
 			->addExtra('group', function (Model $model): string {
 				return $model->getTable();
 			});
 
-		$data = ElasticObserver::getData($this->model);
+		$data = (new ElasticObserver)
+			->init($this->model)
+			->getData();
+
 		$this->assertNotEmpty($data, 'Data must not be empty');
 		$this->assertEquals([
-			'id' => 1,
-			'name' => 'John Smith some@email.com',
-			'post.name' => 'Some post',
-			'group' => 'users',
+			'id' => $this->model->id,
+			'name' => $this->model->full_name,
+			'destination.name' => $this->model->destination->name,
+			'group' => $this->model->getTable(),
 		], $data, 'Data should be equal to config attributes from the model and extra fields');
 	}
 
@@ -100,34 +114,47 @@ class ElasticObserverTest extends TestCase
 	 */
 	public function testGetModelDataWithModifieredFieldValues(): void
 	{
-		get_class($this->model)::elastic()
-			->addCallback('name', function (string $value): string {
-				return explode(' ', $value)[0];
+		$this
+			->class::elastic()
+			->addExtra('group', function (Model $model): string {
+				return $model->getTable();
 			});
 
-		get_class($this->model)::elastic()
+		$this
+			->class::elastic()
+			->addCallback('name', function (string $value): string {
+				return explode('.', $value)[0];
+			});
+
+		$this
+			->class::elastic()
 			->addCallback('name', function (string $value, array $data): string {
 				return $value . ' ' . $data['group'];
 			});
 
-		get_class($this->model)::elastic()
+		$this
+			->class::elastic()
 			->addCallback('name', function (string $value, array $data, Model $model): string {
-				return $value . ' ' . $model->email . ' ' . $data['post.name'];
+				return $value . ' ' . $model->full_name;
 			});
 
-		get_class($this->model)::elastic()
+		$this
+			->class::elastic()
 			->addCallback('group', function (string $value, array $data): string {
 				return $value . ' ' . $data['name'];
 			});
 
-		$data = ElasticObserver::getData($this->model);
-		$this->assertNotEmpty($data, 'Data must not be empty');
+		$result = (new ElasticObserver)
+			->init($this->model)
+			->getData();
+
+		$this->assertNotEmpty($result, 'Data must not be empty');
 		$this->assertEquals([
-			'id' => 1,
-			'name' => 'John users some@email.com Some post',
-			'post.name' => 'Some post',
-			'group' => 'users John users some@email.com Some post',
-		], $data, 'Data should be equal to config attributes from the model with modifiers');
+			'id' => $this->model->id,
+			'name' => 'flights flights flights.' . $this->model->name,
+			'destination.name' => $this->model->destination->name,
+			'group' => 'flights flights flights flights.' . $this->model->name,
+		], $result, 'Data should be equal to config attributes from the model with modifiers');
 	}
 
 	/**
@@ -136,32 +163,35 @@ class ElasticObserverTest extends TestCase
 	 */
 	public function testGetModelDataWithCustomMappingAndRelations(): void
 	{
-		get_class($this->model)::elastic()
+		$this
+			->class::elastic()
 			->setMapping(function (): array {
 				return [
 					'id',
 					'name',
-					'posts',
-					'post.name',
-					'group',
+					'destination',
+					'destination.name',
 				];
 			});
 
-		get_class($this->model)::elastic()
+		$this
+			->class::elastic()
 			->addExtra('relations', function (): array {
 				return [[
 					'some' => 'value',
 				]];
 			});
 
-		$data = ElasticObserver::getData($this->model);
+		$data = (new ElasticObserver)
+			->init($this->model)
+			->getData();
+
 		$this->assertNotEmpty($data, 'Data must not be empty');
 		$this->assertEquals([
-			'id' => 1,
-			'name' => 'John users some@email.com Some post',
-			'post.name' => 'Some post',
-			'group' => 'users John users some@email.com Some post',
-			'posts' => null,
+			'id' => $this->model->id,
+			'name' => $this->model->name,
+			'destination' => $this->model->destination,
+			'destination.name' => $this->model->destination->name,
 			'relations' => [
 				['some' => 'value'],
 			],
