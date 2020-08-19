@@ -8,6 +8,7 @@ use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Psr7\Request as GuzzleRequest;
 use Illuminate\Http\Request;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Config;
 
@@ -77,22 +78,36 @@ class Sync extends Command
             $class::booted();
 
             try {
-                $this
+                $response = json_decode($this
                     ->client
                     ->send(new GuzzleRequest(Request::METHOD_DELETE, $index = $class::elastic()->index(), [
                         'Content-Type' => 'application/json',
                         'Accept' => 'application/json',
-                    ]));
+                    ]))
+                    ->getBody(), true);
+
+                $this->info('Delete index: ' . $class . ' done!');
             } catch (GuzzleException $e) {
+                $this->info('Nothing to delete with index name ' . $index);
             }
 
+            $this->info('Build data of the ' . $class . ' items');
             $bulk = [];
-            $class::all()
-                ->each(function (Model $model) use (&$bulk, $index): void {
-                    $data = ElasticObserver::getData($model);
+            $progress = $this->output->createProgressBar($class::count());
+            $progress->start();
+            $class::chunk(250, function (Collection $collection) use (&$bulk, $index, $progress): void {
+                $collection->each(function (Model $model) use (&$bulk, $index, $progress): void {
+                    $data = (new ElasticObserver)
+                        ->init($model)
+                        ->getData($model);
+
                     $bulk[] = json_encode(['index' => ['_index' => $index, '_id' => $data[Config::get('elastic_sync.indexes.index_id_field', 'id')]]]);
                     $bulk[] = json_encode($data);
+                    $progress->advance();
                 });
+            });
+
+            $progress->finish();
 
             if ($bulk) {
                 $this
@@ -101,17 +116,19 @@ class Sync extends Command
                         'Content-Type' => 'application/json',
                         'Accept' => 'application/json',
                     ], implode("\n", $bulk) . "\n"));
-            }
 
-            $this->info('Sync for the class: ' . $class . ' done!');
+                $this->info('Sync for the class: ' . $class . ' done!');
+            } else {
+                $this->info('Nothing to index with the class ' . $class);
+            }
         }
 
         foreach ($this->option('resource') as $src) {
+            $this->info('Start sync with resource: ' . $src);
             if (!file_exists($src)) {
                 $this->error('File not found: ' . $src);
             };
 
-            $this->info('Start sync for the file: ' . $src);
             $response = $this
                 ->client
                 ->send(new GuzzleRequest(Request::METHOD_POST, '_bulk', [
@@ -119,7 +136,7 @@ class Sync extends Command
                     'Accept' => 'application/json',
                 ], file_get_contents($src)));
 
-            $this->info('Sync for the file: ' . $src . ' done!');
+            $this->info('Sync with resource: ' . $src . ' done!');
         }
     }
 
