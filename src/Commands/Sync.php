@@ -79,7 +79,7 @@ class Sync extends Command
 
         array_walk($classes, (function (string $class): void {
             $this->line($class);
-        })->bindTo($this)) && $this->info(PHP_EOL);
+        })->bindTo($this)) && $this->info('');
 
         foreach ($classes as $class) {
             $class::booted();
@@ -101,11 +101,12 @@ class Sync extends Command
             } catch (GuzzleException $e) {
             }
 
-            $this->info('Start syncronisation for ' . $class::count() . ' items ... ');
-            $class::chunk(250, (function (Collection $collection): void {
+            $this->info('Start syncronisation for ' . ($count = $class::count()) . ' items ... ' . PHP_EOL);
+
+            $progress = $this->output->createProgressBar($count);
+            $progress->start();
+            $class::chunk(250, function (Collection $collection) use ($progress): void {
                 $bulk = [];
-                $progress = $this->output->createProgressBar($collection->count());
-                $progress->start();
                 $collection->each(function (Model $model) use (&$bulk, $progress): void {
                     $observer = new ElasticObserver;
                     $observer->init($model);
@@ -124,10 +125,10 @@ class Sync extends Command
                             'Accept' => 'application/json',
                         ], implode("\n", $bulk) . "\n"));
                 }
+            });
 
-                $progress->finish();
-            })->bindTo($this));
-            $this->info('*** Syncronization for the class ' . $class . ' completed! ***' . PHP_EOL);
+            $progress->finish();
+            $this->info(PHP_EOL . '*** Syncronization for the class ' . $class . ' completed! ***' . PHP_EOL);
         }
 
         foreach ($this->option('resource') as $src) {
