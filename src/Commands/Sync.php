@@ -128,7 +128,8 @@ class Sync extends Command
             });
 
             $progress->finish();
-            $this->info(PHP_EOL . '*** Syncronization for the class ' . $class . ' completed! ***' . PHP_EOL);
+            $this->line(PHP_EOL);
+            $this->info('*** Syncronization for the class ' . $class . ' completed! ***' . PHP_EOL);
         }
 
         foreach ($this->option('resource') as $src) {
