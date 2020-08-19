@@ -52,6 +52,7 @@ class Sync extends Command
      */
     public function handle()
     {
+        $this->info(PHP_EOL . '[ *** Eloquent Model with Elasticsearch syncronization command *** ]' . PHP_EOL);
         $namespsArg = array_map([static::class, 'normalize'], $this->option('namespace'));
         $classesArg = array_map([static::class, 'normalize'], $this->argument('model'));
         $classes = [];
