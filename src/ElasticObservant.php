@@ -2,6 +2,8 @@
 
 namespace Creatortsv\EloquentElasticSync;
 
+use Illuminate\Support\Facades\Config;
+
 /**
  * Auto boot trait
  */
@@ -19,7 +21,7 @@ trait ElasticObservant
      */
     public static function bootElasticObservant(): void
     {
-        static::observe(new ElasticObserver);
+        !Config::get('elastic_sync.disabled', false) && static::observe(new ElasticObserver);
     }
 
     /**

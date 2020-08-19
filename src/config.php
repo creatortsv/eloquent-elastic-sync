@@ -1,8 +1,8 @@
 <?php
 
-use Illuminate\Support\Env;
-
 return [
+
+    'disabled' => false,
 
     /*
  * Which connection settings will be used
