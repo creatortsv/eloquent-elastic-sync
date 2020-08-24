@@ -83,7 +83,7 @@ class Sync extends Command
         })->bindTo($this)) && $this->info('');
 
         foreach ($classes as $class) {
-            $class::booted();
+            $class::boot();
             $this->info('*** Prepare syncronization for the class ' . $class . ' ***' . PHP_EOL);
             $this->line('Host: ' . Config::get('elastic_sync.connection.' . $class::elastic()->connection() . '.host', 'localhost'));
             $this->line('Port: ' . Config::get('elastic_sync.connection.' . $class::elastic()->connection() . '.port', 9200));
