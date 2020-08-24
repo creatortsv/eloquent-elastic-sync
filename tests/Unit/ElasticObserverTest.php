@@ -68,6 +68,7 @@ class ElasticObserverTest extends TestCase
 					'id',
 					'name' => 'full_name',
 					'destination.name',
+					'url' => 'template:https://domain.com/[name]/data/?and=[id]',
 				],
 			]);
 
@@ -80,6 +81,7 @@ class ElasticObserverTest extends TestCase
 			'id' => $this->model->id,
 			'name' => $this->model->full_name,
 			'destination.name' => $this->model->destination->name,
+			'url' => 'https://domain.com/' . $this->model->name . '/data/?and=' . $this->model->id,
 		], $data, 'Data should be equal to config attributes from the model and extra fields');
 	}
 
@@ -104,6 +106,7 @@ class ElasticObserverTest extends TestCase
 			'id' => $this->model->id,
 			'name' => $this->model->full_name,
 			'destination.name' => $this->model->destination->name,
+			'url' => 'https://domain.com/' . $this->model->name . '/data/?and=' . $this->model->id,
 			'group' => $this->model->getTable(),
 		], $data, 'Data should be equal to config attributes from the model and extra fields');
 	}
@@ -153,6 +156,7 @@ class ElasticObserverTest extends TestCase
 			'id' => $this->model->id,
 			'name' => 'flights flights flights.' . $this->model->name,
 			'destination.name' => $this->model->destination->name,
+			'url' => 'https://domain.com/' . $this->model->name . '/data/?and=' . $this->model->id,
 			'group' => 'flights flights flights flights.' . $this->model->name,
 		], $result, 'Data should be equal to config attributes from the model with modifiers');
 	}

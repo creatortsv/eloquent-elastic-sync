@@ -143,9 +143,20 @@ class ElasticObserver
         } else {
             $collect = collect([$this->model]);
             foreach ($maps as $prop => $alias) {
-                $value = $collect
-                    ->pluck($alias)
-                    ->first();
+                if (strpos($alias, 'template:') !== false) {
+                    preg_match_all("/\[([^\]]*)\]/", $alias = str_replace('template:', '', $alias), $matches);
+                    foreach ($matches[1] ?? [] as $sub) {
+                        $alias = str_replace('[' . $sub . ']', $collect
+                            ->pluck($sub)
+                            ->first(), $alias);
+                    }
+
+                    $value = $alias;
+                } else {
+                    $value = $collect
+                        ->pluck($alias)
+                        ->first();
+                }
 
                 $data[$prop] = $value;
             }
