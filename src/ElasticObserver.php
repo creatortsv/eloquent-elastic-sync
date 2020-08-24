@@ -215,8 +215,8 @@ class ElasticObserver
         $host = Config::get("elastic_sync.connections.$conn.host");
         $port = Config::get("elastic_sync.connections.$conn.port");
 
-        return new Client([
+        return $this->getWrapCallback()(new Client([
             'base_uri' => 'http://' . $host . ':' . $port . '/',
-        ]);
+        ]));
     }
 }

@@ -3,6 +3,7 @@
 namespace Creatortsv\EloquentElasticSync;
 
 use Closure;
+use GuzzleHttp\Client;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Config;
 
@@ -15,6 +16,11 @@ class ElasticIndexConfig
      * @var string
      */
     protected $connection;
+
+    /**
+     * @var Closure
+     */
+    protected $wrapConnection;
 
     /**
      * Index name
@@ -67,6 +73,28 @@ class ElasticIndexConfig
     public function connection(): string
     {
         return $this->connection ?? Config::get('elastic_sync.connection', 'default');
+    }
+
+    /**
+     * Wrap client connection with callback function
+     * @param Closure $callback
+     * @return self
+     */
+    public function wrapConnection(Closure $callback): self
+    {
+        $this->wrapConnection = $callback;
+        return $this;
+    }
+
+    /**
+     * @param Client $client
+     * @return Closure
+     */
+    public function getWrapCallback(): Closure
+    {
+        return $this->wrapConnection ?? function (Client $client): Client {
+            return $client;
+        };
     }
 
     /**

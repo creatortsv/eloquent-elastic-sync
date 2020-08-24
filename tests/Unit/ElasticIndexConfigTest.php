@@ -4,7 +4,10 @@ namespace Creatortsv\EloquentElasticSync\Test\Unit;
 
 use Creatortsv\EloquentElasticSync\ElasticIndexConfig;
 use Creatortsv\EloquentElasticSync\Test\TestCase;
-use Illuminate\Database\Eloquent\Model;
+use GuzzleHttp\Client;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Response;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
 
@@ -88,6 +91,34 @@ class ElasticIndexConfigTest extends TestCase
 
         $this->assertNotEmpty($option, 'It should not be empty');
         $this->assertEquals($name, $option, 'It should be equal to "' . $name . '"');
+    }
+
+    /**
+     * @covers Creatortsv\EloquentElasticSync\ElasticIndexConfig::wrapConnection
+     * @covers Creatortsv\EloquentElasticSync\ElasticIndexConfig::getWrapCallback
+     * @return void
+     */
+    public function testUsingWrapConnectionCallback(): void
+    {
+        $callback = $this
+            ->class::elastic()
+            ->getWrapCallback();
+
+        $this->assertTrue(is_callable($callback), 'It should be callable by default');
+        $this->assertEquals($callback(new Client), new Client);
+
+        $this
+            ->class::elastic()
+            ->wrapConnection(function (): Client {
+                return new Client(['base_uri' => 'http://test.com/api']);
+            });
+
+        $callback = $this
+            ->class::elastic()
+            ->getWrapCallback();
+
+        $this->assertTrue(is_callable($callback), 'It should be callable');
+        $this->assertNotEquals($callback(new Client), new Client);
     }
 
     /**
