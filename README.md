@@ -126,7 +126,7 @@ return [
 ];
 
 ```
-- Override the ```php protected static function booted(): void``` method into your Eloquent models and set connection name like this
+- Override the ```php protected static function boot(): void``` method into your Eloquent models and set connection name like this
 ```php
 <?php
 
@@ -139,13 +139,10 @@ class Flight extends Model
 {
     use EloquentObservant;
     
-    /**
-     * Perform any actions required after the model boots.
-     *
-     * @return void
-     */
-    protected static function booted(): void
+    protected static function boot(): void
     {
+        parent::boot();
+
         static::elastic()->setConnection('flights-connection');
     }
     
@@ -243,7 +240,7 @@ return [
     /* ... */
 ];
 ```
-2. Configure it behavior with ```booted()``` method on your Eloquent models
+2. Configure it behavior with ```boot()``` method on your Eloquent models
 ```php
 <?php
 
@@ -258,13 +255,10 @@ class Flight extends Model
     
     /* ... */
     
-    /**
-     * Perform any actions required after the model boots.
-     *
-     * @return void
-     */
-    protected static function booted(): void
+    protected static function boot(): void
     {
+        parent::boot();
+
         /**
          * Use custom data mapping
          * Don't use real data, only field names
@@ -300,13 +294,10 @@ class Flight extends Model
     
     /* ... */
     
-    /**
-     * Perform any actions required after the model boots.
-     *
-     * @return void
-     */
-    protected static function booted(): void
+    protected static function boot(): void
     {
+        parent::boot();
+
         /**
          * Using callback
          */
@@ -339,13 +330,10 @@ class Flight extends Model
     
     /* ... */
     
-    /**
-     * Perform any actions required after the model boots.
-     *
-     * @return void
-     */
-    protected static function booted(): void
+    protected static function boot(): void
     {
+        parent::boot();
+
         /**
          * Modify group extra field for example
          * @param mixed $group It is value after data mapping operation
