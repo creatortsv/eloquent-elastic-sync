@@ -179,7 +179,7 @@ class ElasticIndexConfig
         $conf = Config::get('elastic_sync.indexes.' . $this->index($model->getTable()), []);
         $maps = array_merge(
             static::createMap($conf['base_mapping'] ?? []),
-            static::createMap($conf[get_class($model)] ?? []),
+            static::createMap($conf[get_class($model)] ?? [])
         );
 
         return $maps;
