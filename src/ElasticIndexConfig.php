@@ -253,9 +253,7 @@ class ElasticIndexConfig
     {
         return $this->query
             ? ($this->query)($query)
-            : (function (Builder $query): Builder {
-                return $query;
-            });
+            : $query;
     }
 
     /**
