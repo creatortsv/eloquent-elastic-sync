@@ -26,12 +26,12 @@ trait ElasticObservant
 
     /**
      * Return Elasticsearch configuration
-     * @param bool $clear
+     * @param bool|null $clear
      * @return ElasticIndexConfig
      */
-    protected static function elastic(bool $clear = false): ElasticIndexConfig
+    protected static function elastic(bool $clear = null): ElasticIndexConfig
     {
-        if (self::$elastic === null || $clear) {
+        if (self::$elastic === null || ($clear ?? false)) {
             self::$elastic = new ElasticIndexConfig;
         }
 
