@@ -104,7 +104,7 @@ class Sync extends Command
             }
 
             $query = $class::elastic()->getQuery($class::query());
-            $this->info('Start syncronisation for ' . ($count = $query::count()) . ' items ... ' . PHP_EOL);
+            $this->info('Start syncronisation for ' . ($count = $query->count()) . ' items ... ' . PHP_EOL);
 
             $progress = $this->output->createProgressBar($count);
             $progress->start();
