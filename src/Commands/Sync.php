@@ -108,7 +108,7 @@ class Sync extends Command
 
             $progress = $this->output->createProgressBar($count);
             $progress->start();
-            $query::chunk(Config::get('elastic_sync.bulk_sync.chunk_size', 10), function (Collection $collection) use ($index, $progress): void {
+            $query->chunk(Config::get('elastic_sync.bulk_sync.chunk_size', 10), function (Collection $collection) use ($index, $progress): void {
                 $bulk = [];
                 $collection->each(function (Model $model) use (&$bulk, $index, $progress): void {
                     $observer = new ElasticObserver;
