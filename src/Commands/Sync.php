@@ -86,8 +86,8 @@ class Sync extends Command
             $index = (new $class)->getTable();
             $index = $class::elastic()->index($index);
             $this->info('*** Prepare syncronization for the class ' . $class . ' ***' . PHP_EOL);
-            $this->line('Host: ' . Config::get('elastic_sync.connection.' . $class::elastic()->connection() . '.host', 'localhost'));
-            $this->line('Port: ' . Config::get('elastic_sync.connection.' . $class::elastic()->connection() . '.port', 9200));
+            $this->line('Host: ' . Config::get('elastic_sync.connections.' . $class::elastic()->connection() . '.host', 'localhost'));
+            $this->line('Port: ' . Config::get('elastic_sync.connections.' . $class::elastic()->connection() . '.port', 9200));
             $this->line('Index name: ' . $index . PHP_EOL);
 
             try {
@@ -114,7 +114,7 @@ class Sync extends Command
                     $observer = new ElasticObserver;
                     $observer->init($model);
 
-                    $data = $observer->getData($model);
+                    $data = $observer->getData();
                     $bulk[] = json_encode(['index' => ['_index' => $index, '_id' => $data[$observer->fieldId()]]]);
                     $bulk[] = json_encode($data);
                     $progress->advance();
