@@ -106,7 +106,7 @@ class Sync extends Command
 
             $progress = $this->output->createProgressBar($count);
             $progress->start();
-            $class::chunk(100, function (Collection $collection) use ($progress): void {
+            $class::chunk(10, function (Collection $collection) use ($progress): void {
                 $bulk = [];
                 $collection->each(function (Model $model) use (&$bulk, $progress): void {
                     $observer = new ElasticObserver;

@@ -5,12 +5,12 @@ return [
     'disabled' => false,
 
     /*
- * Which connection settings will be used
- */
+             * Which connection settings will be used
+             */
     'connection' => 'default',
 
     /*
- * Describe different connections
+     * Describe different connections
      */
     'connections' => [
 
@@ -80,5 +80,11 @@ return [
         'failed' => Event::class,
 
     ], */
+
+    'bulk_sync' => [
+
+        'chunk_size' => 10,
+
+    ],
 
 ];
