@@ -3,6 +3,7 @@
 namespace Creatortsv\EloquentElasticSync;
 
 use Closure;
+use Exception;
 use GuzzleHttp\Client;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -127,10 +128,10 @@ class ElasticIndexConfig
 
     /**
      * Set index name
-     * @param string $name
+     * @param string|Closure $name
      * @return self
      */
-    public function setIndex(string $name = null): self
+    public function setIndex($name = null): self
     {
         $this->name = $name;
         return $this;
@@ -139,11 +140,26 @@ class ElasticIndexConfig
     /**
      * Get the index name
      * @param string|null $default
-     * @return string|null
+     * @return string
+     * @throws Exception
      */
-    public function index(string $default = null)
+    public function index(string $default = null): string
     {
-        return $this->name ?? Config::get('elastic_sync.indexes.default') ?? $default;
+        if (is_string($this->name)) {
+            return $this->name;
+        }
+
+        $default = Config::get('elastic_sync.indexes.default') ?? $default;
+
+        if (is_callable($this->name)) {
+            $name = ($this->name)($default);
+        }
+
+        if (is_string($name = $name ?? $default) && strlen($name)) {
+            return $name;
+        }
+
+        throw new Exception('Return type must be a string!');
     }
 
     /**

@@ -4,6 +4,7 @@ namespace Creatortsv\EloquentElasticSync\Test\Unit;
 
 use Creatortsv\EloquentElasticSync\ElasticIndexConfig;
 use Creatortsv\EloquentElasticSync\Test\TestCase;
+use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
@@ -21,7 +22,6 @@ class ElasticIndexConfigTest extends TestCase
         return [
             'connection option' => ['elastic_sync.connection', 'default', 'connection'],
             'field id name option' => ['elastic_sync.index_id_field', 'id', 'fieldId'],
-            'index name option' => ['elastic_sync.indexes.default', null, 'index', 'some_table'],
         ];
     }
 
@@ -91,6 +91,97 @@ class ElasticIndexConfigTest extends TestCase
 
         $this->assertNotEmpty($option, 'It should not be empty');
         $this->assertEquals($name, $option, 'It should be equal to "' . $name . '"');
+    }
+
+    /**
+     * @covers Creatortsv\EloquentElasticSync\ElasticIndexConfig::setIndex
+     * @covers Creatortsv\EloquentElasticSync\ElasticIndexConfig::index
+     * @return void
+     */
+    public function testDefaultIndexConfiguration(): void
+    {
+        Config::shouldReceive('get')
+            ->once()
+            ->with('elastic_sync.indexes.default')
+            ->andReturn(null);
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Return type must be a string!');
+        $this->assertNull($this
+            ->class::elastic()
+            ->index());
+    }
+
+    /**
+     * @depends testDefaultIndexConfiguration
+     * @return string
+     */
+    public function testChangedIndexConfigOption(): string
+    {
+        Config::shouldReceive('get')
+            ->once()
+            ->with('elastic_sync.indexes.default')
+            ->andReturn($default = 'default');
+
+        $this->assertEquals($default, $index = $this
+            ->class::elastic()
+            ->index(), 'It should be equal to elastic_sync.indexes.default option');
+
+        return $index;
+    }
+
+    /**
+     * @depends testChangedIndexConfigOption
+     * @return string
+     */
+    public function testAssignedAsStringIndex(string $default): string
+    {
+        Config::shouldReceive('get')
+            ->once()
+            ->with('elastic_sync.indexes.default')
+            ->andReturn($default);
+
+        $this
+            ->class::elastic()
+            ->setIndex($index = 'some');
+
+        $this->assertEquals($index, $this
+            ->class::elastic()
+            ->index(), 'It should be equal to assigned string');
+
+        return $default;
+    }
+
+    /**
+     * @depends testAssignedAsStringIndex
+     * @return void
+     */
+    public function testAssignedIndexByTheFunction(string $default): void
+    {
+        Config::shouldReceive('get')
+            ->once()
+            ->with('elastic_sync.indexes.default')
+            ->andReturn($default);
+
+        $this
+            ->class::elastic()
+            ->setIndex(function () {
+                return null;
+            });
+
+        $this->assertEquals($default, $this
+            ->class::elastic()
+            ->index(), 'It should return default option if callback returns null');
+
+        $this
+            ->class::elastic()
+            ->setIndex(function (string $default) {
+                return 'decorated_' . $default;
+            });
+
+        $this->assertEquals($this
+            ->class::elastic()
+            ->index(), 'decorated_' . $default);
     }
 
     /**
