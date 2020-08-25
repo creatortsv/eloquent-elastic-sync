@@ -4,6 +4,7 @@ namespace Creatortsv\EloquentElasticSync;
 
 use Closure;
 use GuzzleHttp\Client;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Config;
 
@@ -52,6 +53,11 @@ class ElasticIndexConfig
      * @var array
      */
     protected $extra = [];
+
+    /**
+     * @var Clouser
+     */
+    protected $query;
 
     /**
      * Set connection name
@@ -211,6 +217,29 @@ class ElasticIndexConfig
         );
 
         return $maps;
+    }
+
+    /**
+     * @param Closure $query
+     * @return self
+     */
+    public function setQuery(Closure $query): self
+    {
+        $this->query = $query;
+        return $this;
+    }
+
+    /**
+     * @param Client $client
+     * @return Closure
+     */
+    public function getQuery(Builder $query): Builder
+    {
+        return $this->query
+            ? ($this->query)($query)
+            : (function (Builder $query): Builder {
+                return $query;
+            });
     }
 
     /**

@@ -83,11 +83,12 @@ class Sync extends Command
         })->bindTo($this)) && $this->info('');
 
         foreach ($classes as $class) {
-            $class::boot();
+            $index = (new $class)->getTable();
+            $index = $class::elastic()->index($index);
             $this->info('*** Prepare syncronization for the class ' . $class . ' ***' . PHP_EOL);
             $this->line('Host: ' . Config::get('elastic_sync.connection.' . $class::elastic()->connection() . '.host', 'localhost'));
             $this->line('Port: ' . Config::get('elastic_sync.connection.' . $class::elastic()->connection() . '.port', 9200));
-            $this->line('Index name: ' . $index = $class::elastic()->index((new $class)->getTable()) . PHP_EOL);
+            $this->line('Index name: ' . $index . PHP_EOL);
 
             try {
                 json_decode($this
@@ -102,18 +103,19 @@ class Sync extends Command
             } catch (GuzzleException $e) {
             }
 
-            $this->info('Start syncronisation for ' . ($count = $class::count()) . ' items ... ' . PHP_EOL);
+            $query = $class::elastic()->getQuery($class::query());
+            $this->info('Start syncronisation for ' . ($count = $query::count()) . ' items ... ' . PHP_EOL);
 
             $progress = $this->output->createProgressBar($count);
             $progress->start();
-            $class::chunk(10, function (Collection $collection) use ($progress): void {
+            $query::chunk(10, function (Collection $collection) use ($index, $progress): void {
                 $bulk = [];
-                $collection->each(function (Model $model) use (&$bulk, $progress): void {
+                $collection->each(function (Model $model) use (&$bulk, $index, $progress): void {
                     $observer = new ElasticObserver;
                     $observer->init($model);
 
                     $data = $observer->getData($model);
-                    $bulk[] = json_encode(['index' => ['_index' => $observer->index($model->getTable()), '_id' => $data[$observer->fieldId()]]]);
+                    $bulk[] = json_encode(['index' => ['_index' => $index, '_id' => $data[$observer->fieldId()]]]);
                     $bulk[] = json_encode($data);
                     $progress->advance();
                 });
